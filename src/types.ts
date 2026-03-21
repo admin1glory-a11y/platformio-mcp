@@ -23,9 +23,11 @@ export interface BoardInfo {
   name: string;
   platform: string;
   mcu: string;
-  frequency: string;
-  flash: number;
-  ram: number;
+  frequency?: string;
+  flash?: number;
+  ram?: number;
+  fcpu?: number;
+  rom?: number;
   frameworks?: string[];
   vendor?: string;
   url?: string;
@@ -36,9 +38,11 @@ export const BoardInfoSchema = z.object({
   name: z.string(),
   platform: z.string(),
   mcu: z.string(),
-  frequency: z.string(),
-  flash: z.number(),
-  ram: z.number(),
+  frequency: z.string().optional(),
+  flash: z.number().optional(),
+  ram: z.number().optional(),
+  fcpu: z.number().optional(),
+  rom: z.number().optional(),
   frameworks: z.array(z.string()).optional(),
   vendor: z.string().optional(),
   url: z.string().optional(),
