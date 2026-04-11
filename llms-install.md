@@ -267,7 +267,7 @@ npm run build
 
 ### What It Does
 
-The PlatformIO MCP Server provides 11 tools:
+The PlatformIO MCP Server provides 12 tools:
 
 1. **list_boards** - Discover available development boards
 2. **get_board_info** - Get specs for a specific board
@@ -276,10 +276,11 @@ The PlatformIO MCP Server provides 11 tools:
 5. **build_project** - Compile firmware
 6. **clean_project** - Remove build artifacts
 7. **upload_firmware** - Flash firmware to device
-8. **start_monitor** - Get serial monitor command
-9. **search_libraries** - Find libraries in registry
-10. **install_library** - Install libraries
-11. **list_installed_libraries** - List installed libraries
+8. **upload_filesystem** - Upload SPIFFS/LittleFS filesystem image from `data/` directory
+9. **start_monitor** - Get serial monitor command
+10. **search_libraries** - Find libraries in registry
+11. **install_library** - Install libraries
+12. **list_installed_libraries** - List installed libraries
 
 ### Board-Agnostic Design
 

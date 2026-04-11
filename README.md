@@ -53,8 +53,8 @@ pio --version
 
 ```bash
 # Clone or download this repository
-git clone https://github.com/yourusername/platformio-mcp-server.git
-cd platformio-mcp-server
+git clone https://github.com/jl-codes/platformio-mcp.git
+cd platformio-mcp
 
 # Install dependencies
 npm install
@@ -65,7 +65,7 @@ npm run build
 
 ## MCP Tools
 
-The server exposes 11 MCP tools for comprehensive embedded development:
+The server exposes 12 MCP tools for comprehensive embedded development:
 
 ### Board Discovery
 
@@ -158,6 +158,21 @@ Uploads compiled firmware to a connected device.
 }
 ```
 
+#### `upload_filesystem`
+Uploads filesystem image (SPIFFS/LittleFS) from the project's `data/` directory to a connected device. Useful for ESP32/ESP8266 projects with web interfaces that need to deploy HTML, CSS, JS, config files, etc.
+
+**Parameters:**
+- `projectDir` (required): Path to project directory
+- `port` (optional): Upload port (auto-detected if not specified)
+- `environment` (optional): Specific environment from platformio.ini
+
+**Example:**
+```json
+{
+  "projectDir": "/path/to/my-project"
+}
+```
+
 #### `start_monitor`
 Provides instructions and command for starting serial monitor.
 
@@ -210,7 +225,19 @@ Lists installed libraries (globally or for a project).
 
 1. **Install the server** following the installation instructions above
 
-2. **Configure Cline** to use this MCP server (add to your Cline configuration)
+2. **Configure Cline** to use this MCP server (add to your Cline MCP settings):
+
+```json
+{
+  "mcpServers": {
+    "platformio": {
+      "command": "node",
+      "args": ["/path/to/platformio-mcp/build/index.js"],
+      "env": {}
+    }
+  }
+}
+```
 
 3. **Start developing!** Use natural language to interact with PlatformIO:
    - "List all ESP32 boards"
@@ -218,6 +245,38 @@ Lists installed libraries (globally or for a project).
    - "Build my project at /path/to/project"
    - "Upload firmware to my ESP32"
    - "Search for WiFi libraries"
+
+### Supercharge Your Workflow with Cline Customization
+
+Cline offers powerful customization features that pair perfectly with PlatformIO development:
+
+#### 📋 Workflows
+Automate repetitive embedded dev tasks by creating [Cline Workflows](https://docs.cline.bot/customization/workflows) — Markdown files that define multi-step processes Cline follows automatically. Place them in `.clinerules/workflows/` in your project root.
+
+**Example: `build-upload-monitor.md`**
+```markdown
+# Build, Upload & Monitor
+
+1. Build the PlatformIO project in the current directory
+2. If the build succeeds, upload the firmware to the connected device
+3. Provide the serial monitor command so I can observe the output
+```
+
+#### 🧠 Skills
+Create reusable [Cline Skills](https://docs.cline.bot/customization/skills) that package embedded development expertise. Skills load on-demand — only when Cline detects a relevant request — keeping your context lean.
+
+Skills live in `.cline/skills/` (project) or `~/.cline/skills/` (global) and include a `SKILL.md` with instructions plus optional bundled docs and templates.
+
+#### 🪝 Hooks
+Use [Cline Hooks](https://docs.cline.bot/customization/hooks) to inject guardrails and validation into your development flow. Hooks are executable scripts that run at key moments (task start, before/after tool use, etc.).
+
+**Ideas for PlatformIO hooks:**
+- **Pre-upload validation**: Ensure a successful build exists before allowing firmware upload
+- **Post-build checks**: Run static analysis or size checks after compilation
+- **Task start context**: Auto-inject your board configuration and project state when starting a new task
+
+#### 🗂️ Kanban for Complex Projects
+Building a multi-component firmware project? Use the **Kanban** to orchestrate your work — break down complex embedded projects into manageable tasks, track progress across boards and features, and let Cline work through them systematically. Perfect for projects that span firmware, filesystem, library integration, and hardware bring-up.
 
 ## Usage with Claude Code
 
@@ -251,6 +310,7 @@ Once configured, Claude Code can use these MCP tools directly:
 - `mcp__platformio__build_project` - Compile firmware
 - `mcp__platformio__clean_project` - Clean build artifacts
 - `mcp__platformio__upload_firmware` - Flash to device
+- `mcp__platformio__upload_filesystem` - Upload SPIFFS/LittleFS filesystem
 - `mcp__platformio__start_monitor` - Get monitor command
 - `mcp__platformio__search_libraries` - Search library registry
 - `mcp__platformio__install_library` - Install libraries
