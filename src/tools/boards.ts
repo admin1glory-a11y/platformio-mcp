@@ -10,17 +10,35 @@ import { validateBoardId } from '../utils/validation.js';
 import { BoardNotFoundError, PlatformIOError } from '../utils/errors.js';
 
 /**
- * PlatformIO returns boards as an object with platform keys containing arrays of boards
- * Example: { "atmelavr": [{...}], "espressif32": [{...}] }
+ * PlatformIO JSON output format varies by version:
+ * - Newer versions return a flat array of boards
+ * - Some versions return an object grouped by platform
  */
-const PioBoardsOutputSchema = z.record(z.array(BoardInfoSchema));
+const PioBoardsOutputSchema = z.union([
+  z.array(BoardInfoSchema),
+  z.record(z.array(BoardInfoSchema)),
+]);
+
+function normalizeBoardsOutput(
+  output: z.infer<typeof PioBoardsOutputSchema>
+): BoardInfo[] {
+  if (Array.isArray(output)) {
+    return output;
+  }
+
+  const flattened: BoardInfo[] = [];
+  for (const platformBoards of Object.values(output)) {
+    flattened.push(...platformBoards);
+  }
+  return flattened;
+}
 
 /**
  * Lists all available PlatformIO boards with optional filtering
  */
 export async function listBoards(filter?: string): Promise<BoardInfo[]> {
   try {
-    const args: string[] = ['boards'];
+    const args: string[] = [];
     
     if (filter && filter.trim().length > 0) {
       args.push(filter.trim());
@@ -29,16 +47,12 @@ export async function listBoards(filter?: string): Promise<BoardInfo[]> {
     // Use shorter timeout for board listing
     const result = await platformioExecutor.executeWithJsonOutput(
       'boards',
-      [],
+      args,
       PioBoardsOutputSchema,
       { timeout: 30000 }
     );
 
-    // Flatten the platform-grouped boards into a single array
-    const allBoards: BoardInfo[] = [];
-    for (const platformBoards of Object.values(result)) {
-      allBoards.push(...platformBoards);
-    }
+    const allBoards = normalizeBoardsOutput(result);
 
     // Apply filter if provided (PlatformIO does basic filtering, but we can enhance it)
     if (filter && filter.trim().length > 0) {
@@ -80,12 +94,9 @@ export async function getBoardInfo(boardId: string): Promise<BoardInfo> {
       { timeout: 30000 }
     );
 
-    // Flatten and find exact match
-    for (const platformBoards of Object.values(result)) {
-      const board = platformBoards.find(b => b.id === boardId);
-      if (board) {
-        return board;
-      }
+    const board = normalizeBoardsOutput(result).find(b => b.id === boardId);
+    if (board) {
+      return board;
     }
 
     // If we get here, the board wasn't found
@@ -114,7 +125,21 @@ export async function listBoardsByPlatform(): Promise<Record<string, BoardInfo[]
       { timeout: 30000 }
     );
 
-    return result;
+    if (!Array.isArray(result)) {
+      return result;
+    }
+
+    // Convert flat list into platform-keyed map for compatibility with existing callers.
+    const grouped: Record<string, BoardInfo[]> = {};
+    for (const board of result) {
+      const platform = board.platform || 'unknown';
+      if (!grouped[platform]) {
+        grouped[platform] = [];
+      }
+      grouped[platform].push(board);
+    }
+
+    return grouped;
   } catch (error) {
     throw new PlatformIOError(
       `Failed to list boards by platform: ${error}`,
