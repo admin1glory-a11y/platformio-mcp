@@ -1,0 +1,2 @@
+# Mark hook scripts as generated so GitHub excludes them from language stats
+.clinerules/hooks/* linguist-generated=true
