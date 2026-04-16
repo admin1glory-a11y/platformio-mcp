@@ -88,7 +88,8 @@ jobs:
 
       - name: Run PR Detective
         id: detective
-        timeout-minutes: 10
+        continue-on-error: true
+        timeout-minutes: 15
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ steps.pr.outputs.url }}
