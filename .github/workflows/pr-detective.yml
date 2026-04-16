@@ -30,10 +30,43 @@ jobs:
         env:
           CLINE_API_KEY: ${{ secrets.CLINE_API_KEY }}
         run: |
-          # Configure Cline with the API key
           mkdir -p ~/.cline/data
-          echo '{"clineApiKey":"'"$CLINE_API_KEY"'"}' > ~/.cline/data/secrets.json
+
+          # Write secrets — Cline API key
+          cat > ~/.cline/data/secrets.json <<EOF
+          {"clineApiKey":"$CLINE_API_KEY"}
+          EOF
           chmod 600 ~/.cline/data/secrets.json
+
+          # Write global state — provider=cline, model=anthropic/claude-sonnet-4.6
+          cat > ~/.cline/data/globalState.json <<'EOF'
+          {
+            "actModeApiProvider": "cline",
+            "planModeApiProvider": "cline",
+            "actModeClineModelId": "anthropic/claude-sonnet-4.6",
+            "planModeClineModelId": "anthropic/claude-sonnet-4.6",
+            "actModeClineModelInfo": {
+              "maxTokens": 128000,
+              "contextWindow": 200000,
+              "supportsImages": true,
+              "supportsPromptCache": true,
+              "inputPrice": 3,
+              "outputPrice": 15,
+              "cacheWritesPrice": 3.75,
+              "cacheReadsPrice": 0.3
+            },
+            "planModeClineModelInfo": {
+              "maxTokens": 128000,
+              "contextWindow": 200000,
+              "supportsImages": true,
+              "supportsPromptCache": true,
+              "inputPrice": 3,
+              "outputPrice": 15,
+              "cacheWritesPrice": 3.75,
+              "cacheReadsPrice": 0.3
+            }
+          }
+          EOF
 
       - name: Clone PR Detective
         run: |
@@ -49,28 +82,25 @@ jobs:
           else
             PR_URL="${{ github.event.pull_request.html_url }}"
           fi
-          # Extract PR number from URL
           PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Run PR Detective
         id: detective
+        timeout-minutes: 10
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ steps.pr.outputs.url }}
         run: |
           cd /tmp/pr-detective
-          REVIEW=$(npx tsx src/index.ts --ci "$PR_URL" 2>/dev/null || echo "⚠️ PR Detective encountered an error analyzing this PR.")
-
-          # Write to file to handle multiline output
+          REVIEW=$(npx tsx src/index.ts --ci "$PR_URL" 2>&1 || echo "⚠️ PR Detective encountered an error analyzing this PR.")
           echo "$REVIEW" > /tmp/review.md
 
       - name: Post PR Comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Build the comment with header
           {
             echo "## 🔍 PR Detective Review"
             echo ""
