@@ -3,6 +3,12 @@ name: 🔍 PR Detective Review
 on:
   pull_request:
     types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_url:
+        description: "GitHub PR URL to analyze"
+        required: true
+        type: string
 
 permissions:
   pull-requests: write
@@ -35,11 +41,24 @@ jobs:
           cd /tmp/pr-detective
           npm install
 
+      - name: Resolve PR URL
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_URL="${{ github.event.inputs.pr_url }}"
+          else
+            PR_URL="${{ github.event.pull_request.html_url }}"
+          fi
+          # Extract PR number from URL
+          PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
       - name: Run PR Detective
         id: detective
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_URL: ${{ steps.pr.outputs.url }}
         run: |
           cd /tmp/pr-detective
           REVIEW=$(npx tsx src/index.ts --ci "$PR_URL" 2>/dev/null || echo "⚠️ PR Detective encountered an error analyzing this PR.")
@@ -62,6 +81,6 @@ jobs:
             cat /tmp/review.md
           } > /tmp/comment.md
 
-          gh pr comment "${{ github.event.pull_request.number }}" \
+          gh pr comment "${{ steps.pr.outputs.number }}" \
             --repo "${{ github.repository }}" \
             --body-file /tmp/comment.md
